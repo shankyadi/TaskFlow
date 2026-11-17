@@ -1,5 +1,5 @@
-
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import api from "../api";
 import { useAuth } from "../Context/useAuth";
 
@@ -28,6 +28,9 @@ export default function TaskModal({
   const [error, setError] = useState("");
   const [dateDraft, setDateDraft] = useState("");
   const [showActivity, setShowActivity] = useState(false);
+  const [ai, setAi] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
 
   // Reload task details after changes.
   const load = useCallback(async () => {
@@ -173,7 +176,22 @@ export default function TaskModal({
     }
   };
 
-  return (
+  // Ask the server for an AI summary and priority suggestion.
+  const summarize = async () => {
+    setAiLoading(true);
+    setAiError("");
+
+    try {
+      const response = await api.post(`/tasks/${taskId}/summarize`);
+      setAi(response.data);
+    } catch (err) {
+      setAiError(err.response?.data?.error || "Could not get a summary");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  return createPortal(
     <div
       className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
       onClick={onClose}
@@ -353,6 +371,54 @@ export default function TaskModal({
               </button>
             </form>
 
+            {/* AI Summary */}
+            <div className="mb-5 rounded-xl border border-indigo-100 bg-indigo-50/60 p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-indigo-700">
+                  ✨ AI summary
+                </span>
+
+                <button
+                  type="button"
+                  onClick={summarize}
+                  disabled={aiLoading}
+                  className="rounded-lg bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {aiLoading ? "Thinking..." : ai ? "Refresh" : "Summarise"}
+                </button>
+              </div>
+
+              {aiError && (
+                <p className="mt-2 text-sm text-red-600">{aiError}</p>
+              )}
+
+              {ai && (
+                <div className="mt-2 text-sm text-gray-700">
+                  <p>{ai.summary}</p>
+
+                  <p className="mt-2 text-gray-500">
+                    Suggested priority: <b>{ai.suggestedPriority}</b> ·{" "}
+                    {ai.reason}
+                  </p>
+
+                  {isManager && ai.suggestedPriority !== task.priority && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        update(
+                          { priority: ai.suggestedPriority },
+                          "Could not change priority"
+                        )
+                      }
+                      className="mt-2 text-xs text-indigo-600 hover:underline"
+                    >
+                      Apply {ai.suggestedPriority} priority
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Activity History */}
             <button
               type="button"
@@ -394,6 +460,7 @@ export default function TaskModal({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

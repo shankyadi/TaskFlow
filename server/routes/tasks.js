@@ -3,6 +3,7 @@ const router = require("express").Router();
 const { z } = require("zod");
 const prisma = require("../db");
 const { authenticate, requireRole } = require("../middleware/auth");
+const { summarizeTask } = require("../ai");
 
 router.use(authenticate);
 
@@ -369,6 +370,34 @@ router.patch("/:id", async (req, res) => {
           .slice(-4)
           .join(" "),
     });
+  }
+});
+// AI summary of a task's comments and activity
+router.post("/:id/summarize", async (req, res) => {
+  const task = await prisma.task.findUnique({
+    where: { id: req.params.id },
+    include: {
+      comments: {
+        orderBy: { createdAt: "asc" },
+        include: { author: { select: { name: true } } },
+      },
+      activities: {
+        orderBy: { createdAt: "desc" },
+        take: 15,
+        include: { user: { select: { name: true } } },
+      },
+    },
+  });
+  if (!task) return res.status(404).json({ error: "Task not found" });
+
+  try {
+    res.json(await summarizeTask(task));
+  } catch (err) {
+    console.error(err);
+    if (err.code === "NO_KEY") {
+      return res.status(503).json({ error: "AI is not configured on the server" });
+    }
+    res.status(502).json({ error: "AI summary failed. Please try again." });
   }
 });
 

@@ -327,7 +327,6 @@ button:disabled {
 .tf-page-transition {
   width: 100%;
   min-height: inherit;
-  will-change: opacity, transform;
 }
 
 /* Mobile header */

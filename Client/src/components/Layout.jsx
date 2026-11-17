@@ -226,17 +226,16 @@ export default function Layout() {
               initial={
                 reducedMotion
                   ? false
-                  : { opacity: 0, y: 12, filter: "blur(3px)" }
+                  : { opacity: 0, y: 12 }
               }
               animate={{
                 opacity: 1,
                 y: 0,
-                filter: "blur(0px)",
               }}
               exit={
                 reducedMotion
                   ? { opacity: 1 }
-                  : { opacity: 0, y: -7, filter: "blur(2px)" }
+                  : { opacity: 0, y: -7 }
               }
               transition={{
                 duration: reducedMotion ? 0 : 0.28,
